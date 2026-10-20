@@ -48,6 +48,23 @@ typedef typeof(SPIMEM1.clock.val) spimem_flash_ll_clock_reg_t;
  * Control
  *----------------------------------------------------------------------------*/
 /**
+ * Clear the control register but keep the idle levels of WP# and the data lines (wp_reg, d_pol,
+ * q_pol, all 1 at reset). In DIO and DOUT modes IO2 and IO3 are WP# and HOLD#: driven low, they
+ * hold the flash, which then ignores erase and status commands.
+ *
+ * @param dev Beginning address of the peripheral registers.
+ */
+static inline void spimem_flash_ll_clear_ctrl(spi_mem_dev_t *dev)
+{
+    typeof(dev->ctrl) ctrl = {.val = 0};
+
+    ctrl.wp_reg = dev->ctrl.wp_reg;
+    ctrl.d_pol = dev->ctrl.d_pol;
+    ctrl.q_pol = dev->ctrl.q_pol;
+    dev->ctrl.val = ctrl.val;
+}
+
+/**
  * Reset peripheral registers before configuration and starting control
  *
  * @param dev Beginning address of the peripheral registers.
@@ -55,7 +72,7 @@ typedef typeof(SPIMEM1.clock.val) spimem_flash_ll_clock_reg_t;
 static inline void spimem_flash_ll_reset(spi_mem_dev_t *dev)
 {
     dev->user.val = 0;
-    dev->ctrl.val = 0;
+    spimem_flash_ll_clear_ctrl(dev);
 }
 
 /**
@@ -87,7 +104,7 @@ static inline void spimem_flash_ll_erase_chip(spi_mem_dev_t *dev)
  */
 static inline void spimem_flash_ll_erase_sector(spi_mem_dev_t *dev)
 {
-    dev->ctrl.val = 0;
+    spimem_flash_ll_clear_ctrl(dev);
     dev->cmd.flash_se = 1;
 }
 
