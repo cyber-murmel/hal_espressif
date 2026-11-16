@@ -70,6 +70,8 @@ if(CONFIG_SOC_SERIES_ESP32S31)
     ../../components/esp_hal_i2s/${CONFIG_SOC_SERIES}/include
     ../../components/esp_hal_ieee802154/include
     ../../components/esp_hal_ieee802154/${CONFIG_SOC_SERIES}/include
+    ../../components/esp_hal_lcd/include
+    ../../components/esp_hal_lcd/${CONFIG_SOC_SERIES}/include
     ../../components/esp_hal_ledc/include
     ../../components/esp_hal_ledc/${CONFIG_SOC_SERIES}/include
     ../../components/esp_hal_mcpwm/include
