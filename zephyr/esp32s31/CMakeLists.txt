@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 if(CONFIG_SOC_SERIES_ESP32S31)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/esp_blobs.cmake)
+
 
   zephyr_compile_options(-fstrict-volatile-bitfields)
   zephyr_compile_definitions_ifndef(CONFIG_MCUBOOT CONFIG_APP_BUILD_USE_FLASH_SECTIONS)
