@@ -239,6 +239,16 @@ static void rtc_clk_cpu_freq_to_cpll_mhz(int cpu_freq_mhz, hal_utils_clk_div_t *
     uint32_t apb_divider = 1;
 #if CONFIG_ESP32P4_SELECTS_REV_LESS_V3
     switch (cpu_freq_mhz) {
+    case 200:
+        // ECO0 only (CPLL 400 MHz): MEM_CLK 100 MHz, at 200 MHz it fetches garbage
+        mem_divider = 2;
+        apb_divider = 1;
+        break;
+    case 100:
+        // ECO0 only (CPLL 400 MHz)
+        mem_divider = 1;
+        apb_divider = 1;
+        break;
     case 360:
         mem_divider = 2;
         apb_divider = 2;
@@ -335,6 +345,14 @@ bool rtc_clk_cpu_freq_mhz_to_config(uint32_t freq_mhz, rtc_cpu_freq_config_t *ou
         }
         source_freq_mhz = xtal_freq;
         source = SOC_CPU_CLK_SRC_XTAL;
+    } else if ((freq_mhz == 200 || freq_mhz == 100) &&
+               !ESP_CHIP_REV_ABOVE(efuse_hal_chip_revision(), 100)) {
+        // ECO0 (before v1.0) cannot calibrate the CPLL again: it runs from the 400 MHz the
+        // ROM set up (rtc_clk_cpu_freq_set_config())
+        real_freq_mhz = freq_mhz;
+        source = SOC_CPU_CLK_SRC_CPLL;
+        source_freq_mhz = CLK_LL_PLL_400M_FREQ_MHZ;
+        divider.integer = CLK_LL_PLL_400M_FREQ_MHZ / freq_mhz;
     } else if (freq_mhz == 90) {
         real_freq_mhz = freq_mhz;
         source = SOC_CPU_CLK_SRC_CPLL;
@@ -411,6 +429,17 @@ void rtc_clk_cpu_freq_set_config(const rtc_cpu_freq_config_t *config)
             rtc_clk_set_cpu_switch_to_pll(SLEEP_EVENT_HW_PLL_EN_START);
             rtc_clk_cpll_enable();
         }
+#if CONFIG_ESP32P4_SELECTS_REV_LESS_V3
+        if (!ESP_CHIP_REV_ABOVE(efuse_hal_chip_revision(), 100)) {
+            // ECO0 (before v1.0) hangs when the CPU returns to a CPLL calibrated again: only
+            // the dividers change, from the CPLL the ROM left running
+            s_cur_cpll_freq = clk_ll_cpll_get_freq_mhz((uint32_t)rtc_clk_xtal_freq_get());
+            if (old_cpu_clk_src != SOC_CPU_CLK_SRC_CPLL || config->source_freq_mhz != s_cur_cpll_freq) {
+                ESP_HW_LOGW(TAG, "ECO0: CPLL stays at %d MHz, CPU clock unchanged", s_cur_cpll_freq);
+                return;
+            }
+        }
+#endif
         if (config->source_freq_mhz != s_cur_cpll_freq) {
             soc_xtal_freq_t xtal_freq_mhz = rtc_clk_xtal_freq_get();
             // Calibrate CPLL freq to a new value requires to switch CPU clock source to XTAL first
